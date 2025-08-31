@@ -3,21 +3,69 @@ const app = express();
 const PORT = 5000;
 
 const pool = require('./db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
 app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.send('Expense Tracker API is running');
+function authenticate(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Token missing' });
+
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ error: 'Invalid token' });
+    req.userId = decoded.userId;
+    next();
+  });
+}
+
+app.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+  const hash = await bcrypt.hash(password, 10);
+  try {
+    const result = await pool.query(
+      'INSERT INTO users(username, password_hash) VALUES($1, $2) RETURNING id, username',
+      [username, hash]
+    );
+    res.status(201).json({ message: 'User created', user: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'User creation failed' });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+  try {
+    const userRes = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
+    if (userRes.rowCount === 0) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const user = userRes.rows[0];
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: '2h' });
+    res.json({ message: 'Login successful', token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Login failed' });
+  }
 });
 
 app.get('/health', (req, res) => {
   res.send('OK');
 });
 
-app.get('/transactions', async (req, res) => {
+app.get('/transactions', authenticate, async (req, res) => {
   const { type, start, end } = req.query;
-  let query = 'SELECT * FROM transactions';
-  const values = [];
+  let query = 'SELECT * FROM transactions WHERE user_id=$1';
+  const values = [req.userId];
 
   const filters = [];
   if (type) {
@@ -31,7 +79,7 @@ app.get('/transactions', async (req, res) => {
   }
 
   if (filters.length > 0) {
-    query += ' WHERE ' + filters.join(' AND ');
+    query += ' AND ' + filters.join(' AND ');
   }
 
   query += ' ORDER BY date ASC';
@@ -45,7 +93,7 @@ app.get('/transactions', async (req, res) => {
   }
 });
 
-app.post('/transactions', async (req, res) => {
+app.post('/transactions', authenticate, async (req, res) => {
   const { type, amount, category, date } = req.body;
 
   if (!type || amount === undefined || !category || !date) {
@@ -71,8 +119,8 @@ app.post('/transactions', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'INSERT INTO transactions(type, amount, category, date) VALUES($1, $2, $3, $4) RETURNING *',
-      [type, amount, category, date]
+      'INSERT INTO transactions(type, amount, category, date, user_id) VALUES($1, $2, $3, $4, $5) RETURNING *',
+      [type, amount, category, date, req.userId]
     );
     res.status(201).json({ message: 'Transaction added', transaction: result.rows[0] });
   } catch (err) {
@@ -81,10 +129,16 @@ app.post('/transactions', async (req, res) => {
   }
 });
 
-app.get('/summary', async (req, res) => {
+app.get('/summary', authenticate, async (req, res) => {
   try {
-    const incomeRes = await pool.query('SELECT SUM(amount) AS total FROM transactions WHERE type=$1', ['income']);
-    const expenseRes = await pool.query('SELECT SUM(amount) AS total FROM transactions WHERE type=$1', ['expense']);
+    const incomeRes = await pool.query(
+      'SELECT SUM(amount) AS total FROM transactions WHERE type=$1 AND user_id=$2', 
+      ['income', req.userId]
+    );
+    const expenseRes = await pool.query(
+      'SELECT SUM(amount) AS total FROM transactions WHERE type=$1 AND user_id=$2', 
+      ['expense', req.userId]
+    );
 
     const totalIncome = incomeRes.rows[0].total || 0;
     const totalExpenses = expenseRes.rows[0].total || 0;
@@ -97,10 +151,13 @@ app.get('/summary', async (req, res) => {
   }
 });
 
-app.delete('/transactions/:id', async (req, res) => {
+app.delete('/transactions/:id', authenticate, async (req, res) => {
   const transactionId = parseInt(req.params.id);
   try {
-    const result = await pool.query('DELETE FROM transactions WHERE id=$1 RETURNING *', [transactionId]);
+    const result = await pool.query(
+      'DELETE FROM transactions WHERE id=$1 AND user_id=$2 RETURNING *', 
+      [transactionId, req.userId]
+    );
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
@@ -111,12 +168,15 @@ app.delete('/transactions/:id', async (req, res) => {
   }
 });
 
-app.put('/transactions/:id', async (req, res) => {
+app.put('/transactions/:id', authenticate, async (req, res) => {
   const transactionId = parseInt(req.params.id);
   const { type, amount, category, date } = req.body;
 
   try {
-    const current = await pool.query('SELECT * FROM transactions WHERE id=$1', [transactionId]);
+    const current = await pool.query(
+      'SELECT * FROM transactions WHERE id=$1 AND user_id=$2', 
+      [transactionId, req.userId]
+    );
     if (current.rowCount === 0) return res.status(404).json({ error: 'Transaction not found' });
 
     const updated = {
@@ -138,16 +198,17 @@ app.put('/transactions/:id', async (req, res) => {
   }
 });
 
-app.get('/category-summary', async (req, res) => {
+app.get('/category-summary', authenticate, async (req, res) => {
   try {
-    const result = await pool.query('SELECT category, type, SUM(amount) AS total FROM transactions GROUP BY category, type');
+    const result = await pool.query(
+      'SELECT category, type, SUM(amount) AS total FROM transactions WHERE user_id=$1 GROUP BY category, type',
+      [req.userId]
+    );
     const summary = {};
-
     result.rows.forEach(row => {
       if (!summary[row.category]) summary[row.category] = { income: 0, expense: 0 };
       summary[row.category][row.type] = parseFloat(row.total);
     });
-
     res.json(summary);
   } catch (err) {
     console.error(err);
