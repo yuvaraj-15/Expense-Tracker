@@ -1,0 +1,7 @@
+CREATE TABLE transactions (
+  id SERIAL PRIMARY KEY,
+  type VARCHAR(10) NOT NULL,
+  amount NUMERIC NOT NULL,
+  category VARCHAR(50) NOT NULL,
+  date DATE NOT NULL
+);
