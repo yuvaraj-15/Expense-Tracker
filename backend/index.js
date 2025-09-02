@@ -5,8 +5,10 @@ const PORT = 5000;
 const pool = require('./db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const cors = require('cors');
 const SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
+app.use(cors());
 app.use(express.json());
 
 function authenticate(req, res, next) {
@@ -23,24 +25,31 @@ function authenticate(req, res, next) {
 
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+  if (!username || !password)
+    return res.status(400).json({ error: 'Username and password required' });
 
-  const hash = await bcrypt.hash(password, 10);
   try {
+    const hash = await bcrypt.hash(password, 10);
+
     const result = await pool.query(
       'INSERT INTO users(username, password_hash) VALUES($1, $2) RETURNING id, username',
       [username, hash]
     );
     res.status(201).json({ message: 'User created', user: result.rows[0] });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'User creation failed' });
+    console.error('Registration error:', err.message);
+    if (err.code === '23505') {
+      res.status(400).json({ error: 'Username already exists' });
+    } else {
+      res.status(500).json({ error: 'User creation failed' });
+    }
   }
 });
 
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+  if (!username || !password)
+    return res.status(400).json({ error: 'Username and password required' });
 
   try {
     const userRes = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
@@ -53,7 +62,7 @@ app.post('/login', async (req, res) => {
     const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: '2h' });
     res.json({ message: 'Login successful', token });
   } catch (err) {
-    console.error(err);
+    console.error('Login error:', err.message);
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -88,7 +97,7 @@ app.get('/transactions', authenticate, async (req, res) => {
     const result = await pool.query(query, values);
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error('Fetch transactions error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -96,35 +105,27 @@ app.get('/transactions', authenticate, async (req, res) => {
 app.post('/transactions', authenticate, async (req, res) => {
   const { type, amount, category, date } = req.body;
 
-  if (!type || amount === undefined || !category || !date) {
+  if (!type || amount === undefined || !category || !date)
     return res.status(400).json({ error: 'All fields are required' });
-  }
 
-  if (!['income', 'expense'].includes(type)) {
+  if (!['income', 'expense'].includes(type))
     return res.status(400).json({ error: 'Type must be either "income" or "expense"' });
-  }
 
-  if (typeof amount !== 'number' || amount <= 0) {
+  if (typeof amount !== 'number' || amount <= 0)
     return res.status(400).json({ error: 'Amount must be positive' });
-  }
-
-  if (typeof category !== 'string' || category.trim() === '') {
-    return res.status(400).json({ error: 'Category must be a non-empty string' });
-  }
 
   const parsedDate = new Date(date);
-  if (isNaN(parsedDate.getTime())) {
-    return res.status(400).json({ error: 'Date must be a valid date (YYYY-MM-DD)' });
-  }
+  if (isNaN(parsedDate.getTime()))
+    return res.status(400).json({ error: 'Date must be valid (YYYY-MM-DD)' });
 
   try {
     const result = await pool.query(
-      'INSERT INTO transactions(type, amount, category, date, user_id) VALUES($1, $2, $3, $4, $5) RETURNING *',
+      'INSERT INTO transactions(type, amount, category, date, user_id) VALUES($1,$2,$3,$4,$5) RETURNING *',
       [type, amount, category, date, req.userId]
     );
     res.status(201).json({ message: 'Transaction added', transaction: result.rows[0] });
   } catch (err) {
-    console.error(err);
+    console.error('Add transaction error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -132,11 +133,11 @@ app.post('/transactions', authenticate, async (req, res) => {
 app.get('/summary', authenticate, async (req, res) => {
   try {
     const incomeRes = await pool.query(
-      'SELECT SUM(amount) AS total FROM transactions WHERE type=$1 AND user_id=$2', 
+      'SELECT SUM(amount) AS total FROM transactions WHERE type=$1 AND user_id=$2',
       ['income', req.userId]
     );
     const expenseRes = await pool.query(
-      'SELECT SUM(amount) AS total FROM transactions WHERE type=$1 AND user_id=$2', 
+      'SELECT SUM(amount) AS total FROM transactions WHERE type=$1 AND user_id=$2',
       ['expense', req.userId]
     );
 
@@ -146,7 +147,7 @@ app.get('/summary', authenticate, async (req, res) => {
 
     res.json({ totalIncome, totalExpenses, balance });
   } catch (err) {
-    console.error(err);
+    console.error('Summary error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -155,15 +156,15 @@ app.delete('/transactions/:id', authenticate, async (req, res) => {
   const transactionId = parseInt(req.params.id);
   try {
     const result = await pool.query(
-      'DELETE FROM transactions WHERE id=$1 AND user_id=$2 RETURNING *', 
+      'DELETE FROM transactions WHERE id=$1 AND user_id=$2 RETURNING *',
       [transactionId, req.userId]
     );
-    if (result.rowCount === 0) {
+    if (result.rowCount === 0)
       return res.status(404).json({ error: 'Transaction not found' });
-    }
+
     res.json({ message: 'Transaction deleted', transaction: result.rows[0] });
   } catch (err) {
-    console.error(err);
+    console.error('Delete transaction error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -174,16 +175,17 @@ app.put('/transactions/:id', authenticate, async (req, res) => {
 
   try {
     const current = await pool.query(
-      'SELECT * FROM transactions WHERE id=$1 AND user_id=$2', 
+      'SELECT * FROM transactions WHERE id=$1 AND user_id=$2',
       [transactionId, req.userId]
     );
-    if (current.rowCount === 0) return res.status(404).json({ error: 'Transaction not found' });
+    if (current.rowCount === 0)
+      return res.status(404).json({ error: 'Transaction not found' });
 
     const updated = {
       type: type || current.rows[0].type,
       amount: amount !== undefined ? amount : current.rows[0].amount,
       category: category || current.rows[0].category,
-      date: date || current.rows[0].date
+      date: date || current.rows[0].date,
     };
 
     const result = await pool.query(
@@ -193,7 +195,7 @@ app.put('/transactions/:id', authenticate, async (req, res) => {
 
     res.json({ message: 'Transaction updated', transaction: result.rows[0] });
   } catch (err) {
-    console.error(err);
+    console.error('Update transaction error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -205,13 +207,13 @@ app.get('/category-summary', authenticate, async (req, res) => {
       [req.userId]
     );
     const summary = {};
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
       if (!summary[row.category]) summary[row.category] = { income: 0, expense: 0 };
       summary[row.category][row.type] = parseFloat(row.total);
     });
     res.json(summary);
   } catch (err) {
-    console.error(err);
+    console.error('Category summary error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });
