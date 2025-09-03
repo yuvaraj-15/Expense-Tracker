@@ -8,9 +8,14 @@ services:
       POSTGRES_DB: expense_tracker
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build: ./backend
@@ -23,8 +28,10 @@ services:
       POSTGRES_DB: expense_tracker
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
+      JWT_SECRET: your_secret_key
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:

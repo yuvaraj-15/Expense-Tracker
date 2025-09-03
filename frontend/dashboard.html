@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard | Expense Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="dashboard.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="flex header">
+      <h1>Expense Tracker Dashboard</h1>
+      <button id="logoutBtn" class="btn-logout">Logout</button>
+    </header>
+
+    <div id="alert"></div>
+
+    <section class="summary-cards flex">
+      <div class="card card-income">Income: <span id="totalIncome">0</span></div>
+      <div class="card card-expense">Expenses: <span id="totalExpenses">0</span></div>
+      <div class="card card-balance">Balance: <span id="balance">0</span></div>
+    </section>
+
+    <section class="transaction-form">
+      <h2>Add Transaction</h2>
+      <form id="transactionForm" class="flex form-row">
+        <select id="type" required>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <input type="number" id="amount" placeholder="Amount" required min="1" step="0.01">
+        <input type="text" id="category" placeholder="Category" required>
+        <input type="date" id="date" required>
+        <button type="submit" class="btn-add">Add</button>
+      </form>
+    </section>
+
+    <section class="transactions">
+      <h2>Transactions</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Category</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="transactionsTable"></tbody>
+      </table>
+    </section>
+
+    <section class="charts">
+      <h2>Category Summary</h2>
+      <canvas id="categoryChart" height="150"></canvas>
+
+      <div class="chart-section">
+        <div class="chart-container">
+          <h3>Income vs Expenses</h3>
+          <canvas id="summaryChart"></canvas>
+        </div>
+
+        <div class="chart-container-row">
+          <div class="chart-container">
+            <h3>Income by Source</h3>
+            <canvas id="incomeCategoryChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <h3>Expense Allocation</h3>
+            <canvas id="expenseCategoryChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="editModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Edit Transaction</h3>
+      <form id="editForm">
+        <div class="form-group">
+          <label for="editType">Type</label>
+          <select id="editType" required>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editAmount">Amount</label>
+          <input type="number" id="editAmount" required min="1" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="editCategory">Category</label>
+          <input type="text" id="editCategory" required>
+        </div>
+        <div class="form-group">
+          <label for="editDate">Date</label>
+          <input type="date" id="editDate" required>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-save">Save</button>
+          <button type="button" class="btn-cancel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
