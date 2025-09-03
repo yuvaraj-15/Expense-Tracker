@@ -2,19 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-<<<<<<< HEAD
-const cors = require('cors');
-=======
 const pool = require('./db');
 
 const app = express();
 const PORT = 5000;
->>>>>>> frontend
 const SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
 app.use(cors());
 app.use(express.json());
-app.use(cors());
 
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -28,7 +23,6 @@ function authenticate(req, res, next) {
   });
 }
 
-
 app.get('/health', (req, res) => res.send('OK'));
 
 app.post('/register', async (req, res) => {
@@ -38,21 +32,13 @@ app.post('/register', async (req, res) => {
 
   try {
     const hash = await bcrypt.hash(password, 10);
-<<<<<<< HEAD
-
-=======
->>>>>>> frontend
     const result = await pool.query(
       'INSERT INTO users(username, password_hash) VALUES($1, $2) RETURNING id, username',
       [username, hash]
     );
     res.status(201).json({ message: 'User created', user: result.rows[0] });
   } catch (err) {
-<<<<<<< HEAD
     console.error('Registration error:', err.message);
-=======
-    console.error(err);
->>>>>>> frontend
     if (err.code === '23505') {
       res.status(400).json({ error: 'Username already exists' });
     } else {
@@ -112,28 +98,11 @@ app.post('/transactions', authenticate, async (req, res) => {
 
   if (!type || amount === undefined || !category || !date)
     return res.status(400).json({ error: 'All fields are required' });
-<<<<<<< HEAD
 
-  if (!['income', 'expense'].includes(type))
-=======
-  }
   if (!['income', 'expense'].includes(type)) {
->>>>>>> frontend
     return res.status(400).json({ error: 'Type must be either "income" or "expense"' });
+  }
 
-<<<<<<< HEAD
-  if (typeof amount !== 'number' || amount <= 0)
-    return res.status(400).json({ error: 'Amount must be positive' });
-
-  const parsedDate = new Date(date);
-  if (isNaN(parsedDate.getTime()))
-    return res.status(400).json({ error: 'Date must be valid (YYYY-MM-DD)' });
-
-  try {
-    const result = await pool.query(
-      'INSERT INTO transactions(type, amount, category, date, user_id) VALUES($1,$2,$3,$4,$5) RETURNING *',
-      [type, amount, category, date, req.userId]
-=======
   amount = Number(amount);
   if (isNaN(amount) || amount <= 0) {
     return res.status(400).json({ error: 'Amount must be a positive number' });
@@ -143,7 +112,6 @@ app.post('/transactions', authenticate, async (req, res) => {
     const result = await pool.query(
       'INSERT INTO transactions(type, amount, category, date, user_id) VALUES($1, $2, $3, $4, $5) RETURNING *',
       [type, amount, category.trim(), date, req.userId]
->>>>>>> frontend
     );
     res.status(201).json({ message: 'Transaction added', transaction: result.rows[0] });
   } catch (err) {
@@ -152,48 +120,6 @@ app.post('/transactions', authenticate, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-app.get('/summary', authenticate, async (req, res) => {
-  try {
-    const incomeRes = await pool.query(
-      'SELECT SUM(amount) AS total FROM transactions WHERE type=$1 AND user_id=$2',
-      ['income', req.userId]
-    );
-    const expenseRes = await pool.query(
-      'SELECT SUM(amount) AS total FROM transactions WHERE type=$1 AND user_id=$2',
-      ['expense', req.userId]
-    );
-
-    const totalIncome = incomeRes.rows[0].total || 0;
-    const totalExpenses = expenseRes.rows[0].total || 0;
-    const balance = totalIncome - totalExpenses;
-
-    res.json({ totalIncome, totalExpenses, balance });
-  } catch (err) {
-    console.error('Summary error:', err.message);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-app.delete('/transactions/:id', authenticate, async (req, res) => {
-  const transactionId = parseInt(req.params.id);
-  try {
-    const result = await pool.query(
-      'DELETE FROM transactions WHERE id=$1 AND user_id=$2 RETURNING *',
-      [transactionId, req.userId]
-    );
-    if (result.rowCount === 0)
-      return res.status(404).json({ error: 'Transaction not found' });
-
-    res.json({ message: 'Transaction deleted', transaction: result.rows[0] });
-  } catch (err) {
-    console.error('Delete transaction error:', err.message);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-=======
->>>>>>> frontend
 app.put('/transactions/:id', authenticate, async (req, res) => {
   const transactionId = parseInt(req.params.id);
   const { type, amount, category, date } = req.body;
@@ -235,7 +161,7 @@ app.delete('/transactions/:id', authenticate, async (req, res) => {
     if (result.rowCount === 0) return res.status(404).json({ error: 'Transaction not found' });
     res.json({ message: 'Transaction deleted', transaction: result.rows[0] });
   } catch (err) {
-    console.error(err);
+    console.error('Delete transaction error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -257,7 +183,7 @@ app.get('/summary', authenticate, async (req, res) => {
 
     res.json({ totalIncome, totalExpenses, balance });
   } catch (err) {
-    console.error(err);
+    console.error('Summary error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -283,5 +209,5 @@ app.get('/category-summary', authenticate, async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
