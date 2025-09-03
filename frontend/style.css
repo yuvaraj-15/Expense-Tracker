@@ -1,0 +1,185 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f8f9fa;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+h1, h2 { 
+  color: #333;
+}
+
+.flex { 
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.summary-cards { 
+  margin: 10px 0;
+  display: flex;
+  gap: 10px;
+}
+
+.card {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #e3f2fd;
+  text-align: center;
+  font-weight: bold;
+}
+
+form.flex {
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+input, select, button {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+button {
+  cursor: pointer;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+th, td {
+  padding: 8px;
+  border: 1px solid #ccc;
+  text-align: center;
+}
+
+button.editBtn {
+  background: #ffc107;
+  color: #fff;
+  border: none;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button.deleteBtn { 
+  background: #dc3545; 
+  color: #fff; 
+  border: none; 
+  padding: 5px 8px; 
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.hidden { 
+  display: none !important; 
+}
+.alert { 
+  padding: 10px; 
+  margin: 10px 0; 
+  border-radius: 5px; 
+}
+.alert-success { 
+  background: #d4edda; 
+  color: #155724; 
+}
+.alert-error { 
+  background: #f8d7da; 
+  color: #721c24; 
+}
+
+.charts {
+  text-align: center;
+}
+
+.chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chart-container-row {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.chart-container {
+  flex: 1 1 300px;
+  max-width: 350px;
+  position: relative;
+  margin: 0 auto;
+}
+.chart-container canvas {
+  width: 100% !important;
+  height: 350px !important;
+}
+
+.modal {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  width: 90%;
+  max-width: 400px;
+}
+.modal-content h3 {
+  margin-top: 0;
+  text-align: center;
+}
+.form-group {
+  margin-bottom: 15px;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+.btn-save {
+  background-color: #28a745;
+}
+.btn-cancel {
+  background-color: #6c757d;
+}
