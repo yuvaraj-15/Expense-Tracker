@@ -18,7 +18,7 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
+    image: yuvaraj015/expense-tracker-backend:v1.0.0
     container_name: expense-tracker-backend
     ports:
       - "5000:5000"
@@ -34,7 +34,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    image: yuvaraj015/expense-tracker-frontend:v1.0.0
     container_name: expense-tracker-frontend
     ports:
       - "80:80"
